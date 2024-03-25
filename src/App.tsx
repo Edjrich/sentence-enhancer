@@ -6,19 +6,19 @@ import './App.css'
 const BASEURL = 'https://api.datamuse.com/words'
 
 function App() {
-  const [input, setInput] = useState('')
+  const [sentence, setSentence] = useState('')
   const [isFormSubmitted, setIsFormSubmitted] = useState<boolean>(false)
+  const [newWord, setNewWord] = useState('')
 
   // test "submit"
   function changeWordOnSubmit(event: FormEvent) {
     event.preventDefault()
     setIsFormSubmitted(true)
-    // testCall()
+    parseWords()
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    console.log(event.currentTarget.value)
-    setInput(event.currentTarget.value)
+    setSentence(event.currentTarget.value)
   }
 
   function testCall() {
@@ -27,22 +27,58 @@ function App() {
       url: BASEURL,
       params: {
         // related words
-        rel_syn: input,
+        rel_syn: sentence,
       },
     }).then((res) => {
       console.log(res, res.data)
+      if (res.data && res.data.length >= 1) {
+        console.log('it exists AND there is at least one word')
+        // console.log(res.data[0].word)
+        setNewWord(res.data[0].word)
+      }
     })
   }
 
-  //see if all criteria is met
+  // parse sentence and separate sentence into words
+  function parseWords() {
+    console.log(sentence)
+    // make sure sentence is in fact, a string
+    const parsedSentence = sentence.split(' ')
+    console.log(parsedSentence)
+    testCall()
+    // check for special characters and numbers
+  }
+
   useEffect(() => {
-    if (isFormSubmitted && Object.keys(input)) {
-      console.log(isFormSubmitted)
-      testCall()
-      setIsFormSubmitted(false)
-      setInput('')
+    // console.log('Form submitted status:', isFormSubmitted)
+    if (isFormSubmitted) {
+      console.log('Form submitted')
+      // testCall()
+    } else if (!isFormSubmitted) {
+      console.log('now false')
     }
-  }, [isFormSubmitted, input])
+  }, [isFormSubmitted])
+
+  function handleReset() {
+    setIsFormSubmitted(false)
+    setSentence('')
+    setNewWord('')
+  }
+
+  // TO-DO: sanitize sentence
+  // step 0: Make sure user has actually inputted at least one word
+  // step 1: split sentences into individual words
+  // step 2: highlight errors
+  // step 3: handle names, brands, and proper nouns
+  // step 4: how the fuck do curse words work?
+  // step 5: handle the input of all of that hip slang
+
+  // TO-DO:
+  // // step 0: Display results
+  // step 1: clear input after submission
+  // step 2: Visible error handling
+  // step 3: Some sort of simple design
+  // step 4: settings for how chaotic it should get (use score)
 
   return (
     <>
@@ -52,9 +88,22 @@ function App() {
       </h2>
       <form onSubmit={changeWordOnSubmit}>
         <label htmlFor="sentence">Sentence to ruin</label>
-        <input type="text" id="sentence" onChange={handleChange} />
-        <button type="submit">Let's gooooo</button>
+        <input type="text" id="sentence" className="border" onChange={handleChange} value={sentence} />
+        {/* Show button before submission */}
+        {!isFormSubmitted && <button type="submit">Let's gooooo</button>}
       </form>
+
+      {isFormSubmitted && (
+        <div>
+          <button type="button" onClick={handleReset}>
+            Let's gooooo again
+          </button>
+          <p>It exists</p>
+          <p>
+            {sentence} becomes {newWord}
+          </p>
+        </div>
+      )}
     </>
   )
 }
