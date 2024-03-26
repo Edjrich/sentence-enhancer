@@ -31,10 +31,15 @@ function App() {
       },
     }).then((res) => {
       console.log(res, res.data)
-      if (res.data && res.data.length >= 1) {
-        console.log('it exists AND there is at least one word')
-        // console.log(res.data[0].word)
-        setNewWord(res.data[0].word)
+
+      if (res.status === (200 || '200')) {
+        if (res.data && res.data.length >= 1) {
+          console.log('it exists AND there is at least one word')
+          // console.log(res.data[0].word)
+          setNewWord(res.data[0].word)
+        } else {
+          console.log('no words found')
+        }
       }
     })
   }
@@ -93,14 +98,29 @@ function App() {
         {!isFormSubmitted && <button type="submit">Let's gooooo</button>}
       </form>
 
-      {isFormSubmitted && (
+      {/*  */}
+      {isFormSubmitted && newWord && (
         <div>
           <button type="button" onClick={handleReset}>
             Let's gooooo again
           </button>
-          <p>It exists</p>
+          <p>Success message</p>
           <p>
             {sentence} becomes {newWord}
+          </p>
+        </div>
+      )}
+
+      {/* Too strict, but fine for testing until real error handling is done */}
+      {isFormSubmitted && sentence && (
+        <div>
+          <button type="button" onClick={handleReset}>
+            Let's gooooo again
+          </button>
+          <p>Error message indicating there are no words</p>
+          <p>
+            Hmm... It looks like we couldn't find a replacement word for
+            {sentence}
           </p>
         </div>
       )}
