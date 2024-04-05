@@ -1,14 +1,15 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
-import axios from 'axios'
 import './App.css'
 
 // const BASEURL = 'https://api.datamuse.com'
-const BASEURL = 'https://api.datamuse.com/words'
+// const BASEURL = 'https://api.datamuse.com/words/'
 
 function App() {
-  const [sentence, setSentence] = useState('')
+  const [originalSentence, setOriginalSentence] = useState('')
   const [isFormSubmitted, setIsFormSubmitted] = useState<boolean>(false)
-  const [newWord, setNewWord] = useState('')
+  const [loopComplete, setLoopComplete] = useState<boolean>(false)
+  const [checkedFrequency, setCheckedFrequency] = useState<boolean>(false)
+  const [tempNewSentence, setTempNewSentence] = useState<string[]>([])
 
   // test "submit"
   function changeWordOnSubmit(event: FormEvent) {
@@ -17,41 +18,66 @@ function App() {
     parseWords()
   }
 
+  // track user input
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    setSentence(event.currentTarget.value)
+    setOriginalSentence(event.currentTarget.value)
   }
 
-  function testCall() {
-    axios({
-      method: 'GET',
-      url: BASEURL,
-      params: {
-        // related words
-        rel_syn: sentence,
-      },
-    }).then((res) => {
-      console.log(res, res.data)
+  function handleCheckedFrequency(event: ChangeEvent<HTMLInputElement>) {
+    console.log('event', event.currentTarget.checked)
+    setCheckedFrequency(event.currentTarget.checked)
+  }
 
-      if (res.status === (200 || '200')) {
-        if (res.data && res.data.length >= 1) {
-          console.log('it exists AND there is at least one word')
-          // console.log(res.data[0].word)
-          setNewWord(res.data[0].word)
-        } else {
-          console.log('no words found')
-        }
-      }
-    })
+  // get replacement word
+  async function testCall(word: string) {
+    // change to support different URLS in future
+    const response = await fetch(`https://api.datamuse.com/words?rel_syn=${word}`)
+    const data = await response.json()
+
+    if (data.length >= 0 && !checkedFrequency) {
+      console.log(data)
+      return data[0].word
+    } else if (data.length >= 0 && checkedFrequency) {
+      console.log(data, 'CHAOS')
+      console.log(data.length)
+      // roll random number
+      // return data[0].word'
+      // DOES ONE HAVE TO BE THEREERRREERERERE>???????
+      const randomNumber = Math.floor(Math.floor(Math.random() * data.length + 1))
+      console.log('randomNumber', randomNumber)
+      return data[randomNumber].word
+    } else {
+      return word
+    }
   }
 
   // parse sentence and separate sentence into words
-  function parseWords() {
-    console.log(sentence)
+  async function parseWords() {
+    console.log(originalSentence)
     // make sure sentence is in fact, a string
-    const parsedSentence = sentence.split(' ')
-    console.log(parsedSentence)
-    testCall()
+    const parsedSentence = originalSentence.split(' ')
+    // console.log(parsedSentence)
+    // console.log(parsedSentence.length)
+    // let sentenceLength = parsedSentence.length
+
     // check for special characters and numbers
+
+    for (let i = 0; i < parsedSentence.length; i++) {
+      console.log(parsedSentence[i], i)
+      let wordToReplace = parsedSentence[i]
+
+      console.log(wordToReplace)
+      // testCall(wordToReplace)
+
+      let newWord = await testCall(wordToReplace)
+      if (newWord) {
+        console.log(newWord)
+
+        setTempNewSentence((previousArray) => [...previousArray, newWord])
+      }
+      console.log('loop complete')
+      setLoopComplete(true)
+    }
   }
 
   useEffect(() => {
@@ -64,10 +90,17 @@ function App() {
     }
   }, [isFormSubmitted])
 
+  useEffect(() => {
+    // console.log('Form submitted status:', isFormSubmitted)
+    // if (tempNewSentence.length > 0) {
+    console.log(tempNewSentence, 'tempNewSentence')
+    // }
+  }, [tempNewSentence])
+
   function handleReset() {
     setIsFormSubmitted(false)
-    setSentence('')
-    setNewWord('')
+    setOriginalSentence('')
+    setLoopComplete(false)
   }
 
   // TO-DO: sanitize sentence
@@ -92,27 +125,35 @@ function App() {
         Guaranteed to uhh... Well we'll change the words for you that's the only guarantee.
       </h2>
       <form onSubmit={changeWordOnSubmit}>
-        <label htmlFor="sentence">Sentence to ruin</label>
-        <input type="text" id="sentence" className="border" onChange={handleChange} value={sentence} />
+        {/* settings */}
+        <div>
+          <legend>Frequency of use</legend>
+          <label htmlFor="chaos">Enable chaos mode</label>
+          <input type="checkbox" id="chaos" name="chaos" onChange={handleCheckedFrequency} checked={checkedFrequency} />
+        </div>
+        {/* consider adding setting for slang, swearing */}
+
+        <label htmlFor="originalSentence">Sentence to ruin</label>
+        <input type="text" id="originalSentence" className="border" onChange={handleChange} value={originalSentence} />
         {/* Show button before submission */}
         {!isFormSubmitted && <button type="submit">Let's gooooo</button>}
       </form>
 
       {/*  */}
-      {isFormSubmitted && newWord && (
+      {isFormSubmitted && loopComplete && (
         <div>
           <button type="button" onClick={handleReset}>
             Let's gooooo again
           </button>
-          <p>Success message</p>
+          {/* <p>Success message</p> */}
           <p>
-            {sentence} becomes {newWord}
+            {originalSentence} becomes {tempNewSentence.map((word) => word)}
           </p>
         </div>
       )}
 
       {/* Too strict, but fine for testing until real error handling is done */}
-      {isFormSubmitted && sentence && (
+      {/* {isFormSubmitted && originalSentence && (
         <div>
           <button type="button" onClick={handleReset}>
             Let's gooooo again
@@ -120,10 +161,10 @@ function App() {
           <p>Error message indicating there are no words</p>
           <p>
             Hmm... It looks like we couldn't find a replacement word for
-            {sentence}
+            {originalSentence}
           </p>
         </div>
-      )}
+      )} */}
     </>
   )
 }
