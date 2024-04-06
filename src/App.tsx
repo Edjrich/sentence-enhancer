@@ -5,17 +5,34 @@ import './App.css'
 // const BASEURL = 'https://api.datamuse.com/words/'
 
 function App() {
+  const [baseURL, setBaseURL] = useState('https://api.datamuse.com/words?rel_syn=')
   const [originalSentence, setOriginalSentence] = useState('')
   const [isFormSubmitted, setIsFormSubmitted] = useState<boolean>(false)
   const [loopComplete, setLoopComplete] = useState<boolean>(false)
-  const [checkedFrequency, setCheckedFrequency] = useState<boolean>(false)
+  // flag to change word from most common, to least common, to a random word
+  const [wordFrequency, setWordFrequency] = useState<number>(0)
+  // flag to change from rel_syn to ML (expand on this later)
+  const [mlSwitched, setMlSwitched] = useState<boolean>(false)
   const [tempNewSentence, setTempNewSentence] = useState<string[]>([])
+  const [sassyError, setSassyError] = useState<boolean>(false)
 
   // test "submit"
   function changeWordOnSubmit(event: FormEvent) {
+    // prevent page refresh because MUH LEGACY INTERNET
     event.preventDefault()
-    setIsFormSubmitted(true)
-    parseWords()
+
+    // check if user has actually typed anything in. If not, sassy error.
+    if (originalSentence.length === 0) {
+      setSassyError(true)
+    }
+    // If you user has interacted submit form and try returning something
+    else if (originalSentence.length > 0) {
+      // remove error(s)
+      setSassyError(false)
+      // proceed with rest of application
+      setIsFormSubmitted(true)
+      parseWords()
+    }
   }
 
   // track user input
@@ -23,30 +40,59 @@ function App() {
     setOriginalSentence(event.currentTarget.value)
   }
 
-  function handleCheckedFrequency(event: ChangeEvent<HTMLInputElement>) {
-    console.log('event', event.currentTarget.checked)
-    setCheckedFrequency(event.currentTarget.checked)
+  // toggle choice of more/less commonly used words (or random)
+  function handleWordFrequency(event: ChangeEvent<HTMLInputElement>) {
+    setWordFrequency(Number(event.currentTarget.value))
   }
+
+  // handle changing from syn_rel to ML enabling true chaos
+  function handleMlSwitch(event: ChangeEvent<HTMLInputElement>) {
+    setMlSwitched(event.currentTarget.checked)
+  }
+
+  // change baseURL for queries when required
+  useEffect(() => {
+    if (mlSwitched) {
+      setBaseURL(`https://api.datamuse.com/words?ml=`)
+    } else {
+      setBaseURL(`https://api.datamuse.com/words?rel_syn=`)
+    }
+  }, [mlSwitched])
 
   // get replacement word
   async function testCall(word: string) {
     // change to support different URLS in future
-    const response = await fetch(`https://api.datamuse.com/words?rel_syn=${word}`)
+    const response = await fetch(`${baseURL}${word}`)
     const data = await response.json()
 
-    if (data.length >= 0 && !checkedFrequency) {
-      console.log(data)
+    console.log(data)
+
+    // take first word
+    if (data.length >= 1 && wordFrequency === 0) {
+      // console.log(data)
+      console.log(data[0].word)
       return data[0].word
-    } else if (data.length >= 0 && checkedFrequency) {
-      console.log(data, 'CHAOS')
-      console.log(data.length)
+    }
+    // take least common word
+    if (data.length >= 1 && wordFrequency === 1) {
+      // console.log(data)
+      // console.log(data[0].word)
+      const lastWord = data.length - 1
+      console.log('lastWord', lastWord)
+      return data[lastWord].word
+    }
+    // take a random word
+    else if (data.length >= 1 && wordFrequency === 2) {
+      // console.log(data, 'CHAOS')
+      // console.log(data.length)
       // roll random number
       // return data[0].word'
       // DOES ONE HAVE TO BE THEREERRREERERERE>???????
-      const randomNumber = Math.floor(Math.floor(Math.random() * data.length + 1))
-      console.log('randomNumber', randomNumber)
+      const randomNumber = Math.floor(Math.floor(Math.random() * data.length))
+      // console.log('randomNumber', randomNumber)
       return data[randomNumber].word
     } else {
+      console.log('else')
       return word
     }
   }
@@ -75,9 +121,9 @@ function App() {
 
         setTempNewSentence((previousArray) => [...previousArray, newWord])
       }
-      console.log('loop complete')
-      setLoopComplete(true)
     }
+    console.log('loop complete')
+    setLoopComplete(true)
   }
 
   useEffect(() => {
@@ -101,6 +147,9 @@ function App() {
     setIsFormSubmitted(false)
     setOriginalSentence('')
     setLoopComplete(false)
+    setWordFrequency(0)
+    setMlSwitched(false)
+    setTempNewSentence([])
   }
 
   // TO-DO: sanitize sentence
@@ -110,6 +159,7 @@ function App() {
   // step 3: handle names, brands, and proper nouns
   // step 4: how the fuck do curse words work?
   // step 5: handle the input of all of that hip slang
+  // step 6: consider checking if the word is already used in that sentence to avoid doubles?
 
   // TO-DO:
   // // step 0: Display results
@@ -128,8 +178,24 @@ function App() {
         {/* settings */}
         <div>
           <legend>Frequency of use</legend>
-          <label htmlFor="chaos">Enable chaos mode</label>
-          <input type="checkbox" id="chaos" name="chaos" onChange={handleCheckedFrequency} checked={checkedFrequency} />
+          <label htmlFor="chaos">Use less common words</label>
+
+          <label htmlFor="chaos">Common words? 0 = Most Common 1 = Least Common 2 = RANDOM BABY</label>
+          <input
+            type="range"
+            id="word"
+            name="word"
+            min={0}
+            max={2}
+            value={wordFrequency}
+            onChange={handleWordFrequency}
+          />
+          <legend>Means like instead of </legend>
+          <label htmlFor="ml">
+            Enable chaos mode (Means like instead of syn_rel) This will handle swearwords, and change key words like
+            "THE". This is often less accurate and will make your sentence sound even more broken.
+          </label>
+          <input type="checkbox" id="ml" name="ml" onChange={handleMlSwitch} checked={mlSwitched} />
         </div>
         {/* consider adding setting for slang, swearing */}
 
@@ -147,10 +213,17 @@ function App() {
           </button>
           {/* <p>Success message</p> */}
           <p>
-            {originalSentence} becomes {tempNewSentence.map((word) => word)}
+            {originalSentence} becomes {tempNewSentence}
           </p>
         </div>
       )}
+
+      {/* Errors bud */}
+      {sassyError && <p>Go fuck yourself</p>}
+
+      <footer>
+        <p>Datamuse API, ect. If you are reading this, hire me.</p>
+      </footer>
 
       {/* Too strict, but fine for testing until real error handling is done */}
       {/* {isFormSubmitted && originalSentence && (
