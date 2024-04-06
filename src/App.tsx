@@ -1,23 +1,23 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import './App.css'
 
-// const BASEURL = 'https://api.datamuse.com'
-// const BASEURL = 'https://api.datamuse.com/words/'
-
 function App() {
   const [baseURL, setBaseURL] = useState('https://api.datamuse.com/words?rel_syn=')
   const [originalSentence, setOriginalSentence] = useState('')
   const [isFormSubmitted, setIsFormSubmitted] = useState<boolean>(false)
+  // flag for looping over all words in a sentence
   const [loopComplete, setLoopComplete] = useState<boolean>(false)
   // flag to change word from most common, to least common, to a random word
   const [wordFrequency, setWordFrequency] = useState<number>(0)
   // flag to change from rel_syn to ML (expand on this later)
   const [mlSwitched, setMlSwitched] = useState<boolean>(false)
+  // TODO rename
   const [tempNewSentence, setTempNewSentence] = useState<string[]>([])
+  // TODO rename
   const [sassyError, setSassyError] = useState<boolean>(false)
 
-  // test "submit"
-  function changeWordOnSubmit(event: FormEvent) {
+  // form submission
+  function handleFormSubmit(event: FormEvent) {
     // prevent page refresh because MUH LEGACY INTERNET
     event.preventDefault()
 
@@ -33,6 +33,7 @@ function App() {
       setIsFormSubmitted(true)
       parseWords()
     }
+    // Add additional error handling?
   }
 
   // track user input
@@ -45,11 +46,13 @@ function App() {
     setWordFrequency(Number(event.currentTarget.value))
   }
 
+  // TODO rename
   // handle changing from syn_rel to ML enabling true chaos
   function handleMlSwitch(event: ChangeEvent<HTMLInputElement>) {
     setMlSwitched(event.currentTarget.checked)
   }
 
+  // TODO rename
   // change baseURL for queries when required
   useEffect(() => {
     if (mlSwitched) {
@@ -65,84 +68,50 @@ function App() {
     const response = await fetch(`${baseURL}${word}`)
     const data = await response.json()
 
-    console.log(data)
-
-    // take first word
+    // take first word (default setting)
     if (data.length >= 1 && wordFrequency === 0) {
-      // console.log(data)
-      console.log(data[0].word)
       return data[0].word
     }
     // take least common word
-    if (data.length >= 1 && wordFrequency === 1) {
-      // console.log(data)
-      // console.log(data[0].word)
+    else if (data.length >= 1 && wordFrequency === 1) {
+      // use length of array minus 1
       const lastWord = data.length - 1
-      console.log('lastWord', lastWord)
       return data[lastWord].word
     }
     // take a random word
     else if (data.length >= 1 && wordFrequency === 2) {
-      // console.log(data, 'CHAOS')
-      // console.log(data.length)
-      // roll random number
-      // return data[0].word'
-      // DOES ONE HAVE TO BE THEREERRREERERERE>???????
+      // roll random number inclusive of 0
       const randomNumber = Math.floor(Math.floor(Math.random() * data.length))
-      // console.log('randomNumber', randomNumber)
       return data[randomNumber].word
-    } else {
-      console.log('else')
+    }
+    // if no option is returned, return original word and move on
+    else {
       return word
     }
   }
 
   // parse sentence and separate sentence into words
   async function parseWords() {
-    console.log(originalSentence)
-    // make sure sentence is in fact, a string
+    // TODO make sure sentence is in fact, a string
+    // TODO check for special characters and numbers
+
+    // split sentence
     const parsedSentence = originalSentence.split(' ')
-    // console.log(parsedSentence)
-    // console.log(parsedSentence.length)
-    // let sentenceLength = parsedSentence.length
 
-    // check for special characters and numbers
-
+    // loop over sentence
     for (let i = 0; i < parsedSentence.length; i++) {
-      console.log(parsedSentence[i], i)
       let wordToReplace = parsedSentence[i]
-
-      console.log(wordToReplace)
-      // testCall(wordToReplace)
-
       let newWord = await testCall(wordToReplace)
       if (newWord) {
-        console.log(newWord)
-
         setTempNewSentence((previousArray) => [...previousArray, newWord])
       }
     }
-    console.log('loop complete')
+    // flag for when loop is complete to show new information (this is useful because the words may not change)
     setLoopComplete(true)
   }
 
-  useEffect(() => {
-    // console.log('Form submitted status:', isFormSubmitted)
-    if (isFormSubmitted) {
-      console.log('Form submitted')
-      // testCall()
-    } else if (!isFormSubmitted) {
-      console.log('now false')
-    }
-  }, [isFormSubmitted])
-
-  useEffect(() => {
-    // console.log('Form submitted status:', isFormSubmitted)
-    // if (tempNewSentence.length > 0) {
-    console.log(tempNewSentence, 'tempNewSentence')
-    // }
-  }, [tempNewSentence])
-
+  // reset everything
+  // TODO split into two resets one hard (like this) one soft (keep user settings)
   function handleReset() {
     setIsFormSubmitted(false)
     setOriginalSentence('')
@@ -152,6 +121,8 @@ function App() {
     setTempNewSentence([])
   }
 
+  // TODO this is purposely meta, but go over this again
+
   // TO-DO: sanitize sentence
   // step 0: Make sure user has actually inputted at least one word
   // step 1: split sentences into individual words
@@ -160,6 +131,7 @@ function App() {
   // step 4: how the fuck do curse words work?
   // step 5: handle the input of all of that hip slang
   // step 6: consider checking if the word is already used in that sentence to avoid doubles?
+  // step 7: Add note if word CAN be changed or CANT be changed if not in pure chaos mode
 
   // TO-DO:
   // // step 0: Display results
@@ -174,12 +146,10 @@ function App() {
       <h2 className="text-red-700 font-bold  text-normal">
         Guaranteed to uhh... Well we'll change the words for you that's the only guarantee.
       </h2>
-      <form onSubmit={changeWordOnSubmit}>
+      <form onSubmit={handleFormSubmit}>
         {/* settings */}
         <div>
           <legend>Frequency of use</legend>
-          <label htmlFor="chaos">Use less common words</label>
-
           <label htmlFor="chaos">Common words? 0 = Most Common 1 = Least Common 2 = RANDOM BABY</label>
           <input
             type="range"
@@ -197,7 +167,7 @@ function App() {
           </label>
           <input type="checkbox" id="ml" name="ml" onChange={handleMlSwitch} checked={mlSwitched} />
         </div>
-        {/* consider adding setting for slang, swearing */}
+        {/* consider adding detection for slang, swearing, ect */}
 
         <label htmlFor="originalSentence">Sentence to ruin</label>
         <input type="text" id="originalSentence" className="border" onChange={handleChange} value={originalSentence} />
@@ -211,7 +181,6 @@ function App() {
           <button type="button" onClick={handleReset}>
             Let's gooooo again
           </button>
-          {/* <p>Success message</p> */}
           <p>
             {originalSentence} becomes {tempNewSentence}
           </p>
@@ -219,25 +188,11 @@ function App() {
       )}
 
       {/* Errors bud */}
-      {sassyError && <p>Go fuck yourself</p>}
+      {sassyError && <p>Please enter a word</p>}
 
       <footer>
-        <p>Datamuse API, ect. If you are reading this, hire me.</p>
+        <p>Datamuse API, ect. If you are reading this, hire me. This footer is here so I don't forget about it.</p>
       </footer>
-
-      {/* Too strict, but fine for testing until real error handling is done */}
-      {/* {isFormSubmitted && originalSentence && (
-        <div>
-          <button type="button" onClick={handleReset}>
-            Let's gooooo again
-          </button>
-          <p>Error message indicating there are no words</p>
-          <p>
-            Hmm... It looks like we couldn't find a replacement word for
-            {originalSentence}
-          </p>
-        </div>
-      )} */}
     </>
   )
 }
