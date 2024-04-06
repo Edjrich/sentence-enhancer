@@ -4,6 +4,7 @@ import './App.css'
 function App() {
   const [baseURL, setBaseURL] = useState('https://api.datamuse.com/words?rel_syn=')
   const [originalSentence, setOriginalSentence] = useState('')
+  // TODO review if state is redundant now
   const [isFormSubmitted, setIsFormSubmitted] = useState<boolean>(false)
   // flag for looping over all words in a sentence
   const [loopComplete, setLoopComplete] = useState<boolean>(false)
@@ -14,6 +15,7 @@ function App() {
   // TODO rename
   const [tempNewSentence, setTempNewSentence] = useState<string[]>([])
   // TODO rename
+  const [replaceSuggestionCode, setReplaceSuggestionCode] = useState<number | string[]>([])
   const [sassyError, setSassyError] = useState<boolean>(false)
 
   // form submission
@@ -62,6 +64,8 @@ function App() {
     }
   }, [mlSwitched])
 
+  // test call to see if words are available to replace it
+
   // get replacement word
   async function testCall(word: string) {
     // change to support different URLS in future
@@ -86,8 +90,20 @@ function App() {
     }
     // if no option is returned, return original word and move on
     else {
+      // check if word CAN be replaced
       return word
     }
+  }
+
+  // TODO refine this
+  async function simpleCall(word: string) {
+    // change to support different URLS in future
+    const response = await fetch(`https://api.datamuse.com/words?ml=${word}`)
+    const data = await response.json()
+
+    // if there is anything returned,
+
+    console.log('data', data)
   }
 
   // parse sentence and separate sentence into words
@@ -104,6 +120,14 @@ function App() {
       let newWord = await testCall(wordToReplace)
       if (newWord) {
         setTempNewSentence((previousArray) => [...previousArray, newWord])
+      }
+
+      // check if word was not replaced
+      if (newWord === wordToReplace) {
+        console.log('this is it!', i, newWord, wordToReplace)
+        simpleCall(wordToReplace)
+        // if not replaced, check if replacement is available with check test search
+        // TODO refine how URLS are handled later
       }
     }
     // flag for when loop is complete to show new information (this is useful because the words may not change)
@@ -170,7 +194,14 @@ function App() {
         {/* consider adding detection for slang, swearing, ect */}
 
         <label htmlFor="originalSentence">Sentence to ruin</label>
-        <input type="text" id="originalSentence" className="border" onChange={handleChange} value={originalSentence} />
+        <input
+          type="text"
+          id="originalSentence"
+          className="border"
+          onChange={handleChange}
+          value={originalSentence}
+          spellCheck="true"
+        />
         {/* Show button before submission */}
         {!isFormSubmitted && <button type="submit">Let's gooooo</button>}
       </form>
@@ -181,9 +212,10 @@ function App() {
           <button type="button" onClick={handleReset}>
             Let's gooooo again
           </button>
-          <p>
-            {originalSentence} becomes {tempNewSentence}
-          </p>
+          <p>{originalSentence}</p>
+          <p>becomes</p>
+          <p>{tempNewSentence.join(' ')}</p>
+          <p>{replaceSuggestionCode}</p>
         </div>
       )}
 
