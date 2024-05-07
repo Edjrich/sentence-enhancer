@@ -2,6 +2,12 @@ import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import './App.css'
 
 function App() {
+  interface DisplayedWords {
+    word: string
+    typo: boolean
+    suggestion?: string
+  }
+
   const [baseURL, setBaseURL] = useState('https://api.datamuse.com/words?rel_syn=')
   const [originalSentence, setOriginalSentence] = useState('')
   // TODO review if state is redundant now
@@ -13,9 +19,9 @@ function App() {
   // flag to change from rel_syn to ML (expand on this later)
   const [mlSwitched, setMlSwitched] = useState<boolean>(false)
   // TODO rename
-  const [tempNewSentence, setTempNewSentence] = useState<string[]>([])
+  const [tempNewSentence, setTempNewSentence] = useState<DisplayedWords[]>([])
   // TODO rename
-  const [replaceSuggestionCode, setReplaceSuggestionCode] = useState<number | string[]>([])
+  // const [replaceSuggestionCode, setReplaceSuggestionCode] = useState<number | string[]>([])
   const [sassyError, setSassyError] = useState<boolean>(false)
 
   // form submission
@@ -67,44 +73,70 @@ function App() {
   // test call to see if words are available to replace it
 
   // get replacement word
-  async function testCall(word: string) {
+  async function testCall(word: string, typo: boolean) {
+    typo = false
     // change to support different URLS in future
     const response = await fetch(`${baseURL}${word}`)
     const data = await response.json()
 
     // take first word (default setting)
     if (data.length >= 1 && wordFrequency === 0) {
-      return data[0].word
+      return { word: data[0].word, typo }
     }
     // take least common word
     else if (data.length >= 1 && wordFrequency === 1) {
       // use length of array minus 1
       const lastWord = data.length - 1
-      return data[lastWord].word
+      return { word: data[lastWord].word, typo }
     }
     // take a random word
     else if (data.length >= 1 && wordFrequency === 2) {
       // roll random number inclusive of 0
       const randomNumber = Math.floor(Math.floor(Math.random() * data.length))
-      return data[randomNumber].word
+      return { word: data[randomNumber].word, typo }
     }
     // if no option is returned, return original word and move on
     else {
-      // check if word CAN be replaced
-      return word
+      console.log('else', word)
+      const response = await fetch(`https://api.datamuse.com/sug?s=${word}`)
+      // const response = await fetch(`${baseURL}${word}`)
+      const data = await response.json()
+      console.log('else data response', data)
+
+      if (data.length > 0) {
+        const mostCommonSuggestion = data[0].word
+
+        // check if top returned word is same. If not, flag as possible typo.
+        // While this is a fairly simple approach, it is quick light weight, and so far fairly successful
+        // eventually account for words like y'all
+
+        if (mostCommonSuggestion !== word) {
+          console.log('initial suggestion is different:', data[0].word, word)
+          return { word: word, typo: true, suggestion: mostCommonSuggestion }
+        } else {
+          console.log(
+            'they are the same (this is probably a commonly used word that isnt normally replaced)',
+            data[0].word,
+            word
+          )
+          return { word: word, typo: true }
+        }
+      }
     }
   }
 
   // TODO refine this
-  async function simpleCall(word: string) {
-    // change to support different URLS in future
-    const response = await fetch(`https://api.datamuse.com/words?ml=${word}`)
-    const data = await response.json()
+  // async function simpleCall(word: string) {
+  //   // change to support different URLS in future
+  //   const response = await fetch(`https://api.datamuse.com/words?ml=${word}`)
+  //   const data = await response.json()
 
-    // if there is anything returned,
-
-    console.log('data', data)
-  }
+  //   // if there is anything returned,
+  //   console.log('data', data)
+  //   // if nothing is return, flag as typo
+  //   if (data.length >= 1) {
+  //   }
+  // }
 
   // parse sentence and separate sentence into words
   async function parseWords() {
@@ -117,18 +149,19 @@ function App() {
     // loop over sentence
     for (let i = 0; i < parsedSentence.length; i++) {
       let wordToReplace = parsedSentence[i]
-      let newWord = await testCall(wordToReplace)
+      let typo = false // Example condition to determine if it's a typo or not
+      let newWord = await testCall(wordToReplace, typo)
       if (newWord) {
         setTempNewSentence((previousArray) => [...previousArray, newWord])
       }
 
       // check if word was not replaced
-      if (newWord === wordToReplace) {
-        console.log('this is it!', i, newWord, wordToReplace)
-        simpleCall(wordToReplace)
-        // if not replaced, check if replacement is available with check test search
-        // TODO refine how URLS are handled later
-      }
+      // if (newWord === wordToReplace) {
+      //   console.log('this is it!', i, newWord, wordToReplace)
+      //   simpleCall(wordToReplace)
+      //   // if not replaced, check if replacement is available with check test search
+      //   // TODO refine how URLS are handled later
+      // }
     }
     // flag for when loop is complete to show new information (this is useful because the words may not change)
     setLoopComplete(true)
@@ -163,6 +196,9 @@ function App() {
   // step 2: Visible error handling
   // step 3: Some sort of simple design
   // step 4: settings for how chaotic it should get (use score)
+  useEffect(() => {
+    console.log(tempNewSentence)
+  }, [tempNewSentence])
 
   return (
     <>
@@ -214,8 +250,16 @@ function App() {
           </button>
           <p>{originalSentence}</p>
           <p>becomes</p>
-          <p>{tempNewSentence.join(' ')}</p>
-          <p>{replaceSuggestionCode}</p>
+          {/* running three maps here is stupid, but I am leaving until I refactor everything and make some real decisions */}
+          <p>{tempNewSentence.map((word, index) => word.word).join(' ')}</p>
+          <p>{tempNewSentence.map((word, index) => word.typo).join(' ')}</p>
+          {/* if typo is true, show suggestion */}
+          <p>
+            It looks like this might be a mistake, did you mean
+            {tempNewSentence.map((word, index) => word.suggestion).join(' ')}?
+          </p>
+
+          {/* <p>{replaceSuggestionCode}</p> */}
         </div>
       )}
 
